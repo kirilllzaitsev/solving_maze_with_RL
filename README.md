@@ -1,6 +1,8 @@
-Project "Labyrinth".
+# Project "Labyrinth".
 
-#Usage
+## Usage
  In console:
+ 
  - python learning_management.py
- All parameters are predefined for the purpose of time saving.
+ 
+ All parameters are predefined to save time and nerves.
