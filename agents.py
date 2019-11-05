@@ -17,24 +17,11 @@ class Agent:
         self._nA = num_actions
         self.Q = defaultdict(lambda: np.zeros(num_actions))
         # Hyperparameters
-        self._alpha = 0.0001
+        self._alpha = 0.001
         self._gamma = 1.0
-        self.eps = 0.001
-
-    def step(self, state, action, reward, next_state, done):
-        ''' 
-        Update the agent's knowledge, using the most recently sampled tuple.
-
-        Input:
-        - state: the previous state of the environment
-        - action: the agent's previous choice of action
-        - reward: last reward received
-        - next_state: the current state of the environment
-        - done: whether the episode is complete (True or False)
-
-        Updates agent's Q-table
-        '''
-        pass
+        self._eps_decay = 0.999
+        self._eps_min = 0.005
+        self.eps = 1
 
     def init_strategy(self, strategy):
         return StrategyFactory().init_strategy(strategy)
