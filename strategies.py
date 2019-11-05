@@ -15,16 +15,16 @@ class Strategy:
        return PolicyFactory().init_policy(policy)
 
     def update(self):
-        print('I am stratege\'s update')
+        print('I am strategie\'s update')
 
 
 class Sarsamax(Strategy):
 
 
-    def __init__(self, policy='Greedy'):
+    def __init__(self, policy='EpsilonGreedy'):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action = None):
+    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action = None, eps = None):
         '''
         Update rule for Sarsamax.
 
@@ -38,6 +38,7 @@ class Sarsamax(Strategy):
         Returns:
         - new_value (int): updated action-value for Q[state][action]
         '''
+        next_action = np.argmax(Q[next_state])
         Q_sarsa_next = Q[next_state][next_action] if next_state is not None else 0
         new_value = Q[state][action] + \
             alpha*(reward+gamma*Q_sarsa_next-Q[state][action])
@@ -49,16 +50,15 @@ class ExpectedSarsa(Strategy):
     def __init__(self, policy='Epsilon'):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action = None):
-        self.eps = max(self.eps*self.eps_decay, self.eps_min)**2
-        current = self.Q[state][action]
-        policy_s = np.ones(self.nA)*self.eps/self.nA
-        best_a = np.argmax(self.Q[next_state])
-        policy_s[best_a] = 1 - self.eps + self.eps/self.nA
-        next_distrib = np.dot(policy_s, self.Q[next_state])
-        next_action = self._policy.get_action(Q, next_state)
-        Q_sarsa_next = Q[next_state][next_action]
-        new_value = Q[state][action] + alpha*(reward+self.gamma*Q_sarsa_next-current)
+    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action = None, eps = None):
+        nA=len(Q[next_state])
+        current = Q[state][action]
+        policy_s = np.ones(nA)*eps/nA
+        best_a = np.argmax(Q[next_state])
+        # policy_s[best_a] = 1 - eps + eps/nA
+        # next_action = self._policy.get_action(Q, next_state)
+        Exp_sarsa_next = np.dot(policy_s, Q[next_state])+(1-eps)*best_a
+        new_value = Q[state][action] + alpha*(reward+gamma*Exp_sarsa_next-current)
         return new_value
 
 class StrategyFactory:

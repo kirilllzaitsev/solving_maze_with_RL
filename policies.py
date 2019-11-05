@@ -35,13 +35,13 @@ class Epsilon(Policy):
             return np.random.choice(np.arange(nA))
 
 
-class Greedy(Policy):
+class Epsilongreedy(Policy):
 
 
     def __init__(self):
         super().__init__()
 
-    def get_action(self, Q, state, nA=None, eps=None):
+    def get_action(self, Q, next_state, nA=None, eps=None):
         '''
         
         Inputs:
@@ -51,7 +51,12 @@ class Greedy(Policy):
         Returns:
         - action (int): action that maximizes reward in given state
         '''
-        return np.argmax(Q[state])
+        policy_s = np.ones(nA)*eps/nA
+        best_a = np.argmax(Q[next_state])
+        policy_s[best_a] = 1 - eps + eps/nA
+        # next_action = self._policy.get_action(Q, next_state)
+        next_action = np.random.choice(nA, 1, p=policy_s)
+        return next_action
         
 
 class PolicyFactory:
