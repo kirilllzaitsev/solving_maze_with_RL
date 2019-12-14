@@ -1,21 +1,32 @@
 import numpy as np
 from policies import *
-
+from abc import ABCMeta, abstractmethod
        
 
 class Strategy:
 
 
     def __init__(self, policy=None):
-        self.name = 'I am strategy'
         if policy is not None:
-            self._policy = self.init_policy(policy)
+            self._policy = PolicyFactory().init_policy(policy)
 
-    def init_policy(self, policy):
-       return PolicyFactory().init_policy(policy)
+    @property
+    def policy(self) -> Policy:
+        """
+        Контекст хранит ссылку на один из объектов Стратегии. Контекст не знает
+        конкретного класса стратегии. Он должен работать со всеми стратегиями
+        через интерфейс Стратегии.
+        """
 
+        return self._policy
+
+    @policy.setter
+    def policy(self, policy):
+       self._policy = policy
+
+    @abstractmethod
     def update(self):
-        print('I am strategie\'s update')
+        pass
 
 
 class Sarsamax(Strategy):

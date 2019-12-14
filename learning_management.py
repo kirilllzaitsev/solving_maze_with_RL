@@ -1,4 +1,4 @@
-from agents import Agent
+from SimpleAgents import Agent
 from environments import Environment
 import sys
 from collections import deque
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pprint 
 import seaborn as sns
 import pandas as pd
+# C:\Users\admin\AppData\Local\Programs\Python\Python37-32\Scripts\
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -104,7 +105,7 @@ class Manager:
         pass
 
     
-manager = Manager.getInstance((7, 7), 'Sarsamax', 10000, 4)
+manager = Manager.getInstance((7, 7), 'Sarsamax', 3000, 4)
 Q = manager.start_learning()
 print('Resulting table of (state, action) value-pairs: ')
 pp.pprint(Q)  
