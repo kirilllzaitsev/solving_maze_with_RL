@@ -4,10 +4,10 @@ import sys
 from collections import deque
 import numpy as np
 import matplotlib.pyplot as plt
-import pprint 
+import pprint
 import seaborn as sns
 import pandas as pd
-# C:\Users\admin\AppData\Local\Programs\Python\Python37-32\Scripts\
+from Trainers import *
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -19,6 +19,7 @@ class Manager:
             self._num_episodes = num_episodes
             self._env = self.init_env(env_size)
             self._agent = self.init_agent(strategy, num_actions)
+            self._history = []
         else:
             print("Instance already created:", self.getInstance(strategy, env_size, num_episodes, num_actions))
 
@@ -30,16 +31,11 @@ class Manager:
 
     def init_agent(self, strategy, num_actions):
         agent = Agent(strategy, num_actions)
-        print('Agent initialized')
         return agent
 
     def init_env(self, env_size):
         env = Environment(env_size)
-        print('Environment created')
         return env
-
-    def __del__(self):
-        print('Session destroyed')
         
     def start_learning(self, plot_every=100):
         Q = self._agent.Q
@@ -93,34 +89,43 @@ class Manager:
                 avg_scores.append(np.mean(tmp_scores))
 
         # plot performance
-        plt.plot(np.linspace(0,self._num_episodes,len(avg_scores),endpoint=False), np.asarray(avg_scores))
-        plt.xlabel('Episode Number')
-        plt.ylabel('Average Reward (Over Next %d Episodes)' % plot_every)
-        plt.show()
+        self._history = avg_scores
         # print best 100-episode performance
-        print(('\nBest Average Reward over %d Episodes: ' % plot_every), np.max(avg_scores))  
+        print(f'Best Average Reward over {plot_every} Episodes: {np.max(avg_scores)}')
         return Q
         
     def display_current_policy(self, parameter_list):
         pass
 
-    
-manager = Manager.getInstance((7, 7), 'Sarsamax', 3000, 4)
-Q = manager.start_learning()
-print('Resulting table of (state, action) value-pairs: ')
-pp.pprint(Q)  
-df = pd.DataFrame.from_dict(Q)
 
-fig = plt.figure(figsize=(11, 6))
+def main(strategy, epochs, env, env_size=(10, 10)):
+    # if "DQN" is in strategy:
+    if env == 'Custom':
+        manager = Manager.getInstance(env_size, strategy, epochs, 4)
+        Q = manager.start_learning()
+        print('Resulting table of (state, action) value-pairs: ')
+        pp.pprint(Q)
+        df = pd.DataFrame.from_dict(Q)
 
-ax1= fig.add_subplot(2,2,1)
-ax2= fig.add_subplot(2,2,2)
-ax3= fig.add_subplot(3,1,3)
+        plt.plot(np.linspace(0, manager._num_episodes, len(manager._history), endpoint=False),
+                 np.asarray(manager._history))
+        plt.xlabel('Episode Number')
+        plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
 
-manager._env.display_env(ax1)
-manager._env.plot_optimal_path(Q, ax2)
+        fig = plt.figure(figsize=(11, 6))
 
-ax3.set_title('Learned Q-table')
-sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
+        ax1 = fig.add_subplot(2, 2, 1)
+        ax2 = fig.add_subplot(2, 2, 2)
+        ax3 = fig.add_subplot(3, 1, 3)
 
-plt.show()
+        manager._env.display_env(ax1)
+        manager._env.plot_optimal_path(Q, ax2)
+
+        ax3.set_title('Learned Q-table')
+        sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
+
+        plt.show()
+    else:
+        gt = GymTrainer()
+        gt.train()
+

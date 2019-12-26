@@ -85,7 +85,6 @@ class Environment:
         
     def init_positions(self):
         indices = np.array(np.argwhere(self._action_space==255))
-        print('Indices: ', indices)
         agent_pos = tuple(indices[np.random.randint(0,len(indices))])
         print('Agent pos: ', agent_pos)
         remote_idxs = [a for a in indices if abs(a[0]-agent_pos[0])+abs(a[1]-agent_pos[1]) >= 4]

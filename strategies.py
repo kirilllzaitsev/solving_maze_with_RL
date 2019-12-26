@@ -1,4 +1,3 @@
-import numpy as np
 from policies import *
 from abc import ABCMeta, abstractmethod
        
@@ -12,13 +11,7 @@ class Strategy:
 
     @property
     def policy(self) -> Policy:
-        """
-        Контекст хранит ссылку на один из объектов Стратегии. Контекст не знает
-        конкретного класса стратегии. Он должен работать со всеми стратегиями
-        через интерфейс Стратегии.
-        """
-
-        return self._policy
+         return self._policy
 
     @policy.setter
     def policy(self, policy):

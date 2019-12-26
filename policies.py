@@ -2,18 +2,14 @@ import numpy as np
 
 
 class Policy:
-
-
     def __init__(self):
-        self._name = 'I am agent\'s policy'
+        pass
 
     def get_action(self):
         pass
 
 
 class Epsilon(Policy):
-
-
     def __init__(self):
         super().__init__()
 
