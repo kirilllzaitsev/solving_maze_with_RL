@@ -55,7 +55,7 @@ class GymTrainer:
         import AdvAgents
 
         agent = AdvAgents.DQNAgent(state_size=2, action_size=4, seed=0)
-        def DeepQNetwork(n_episodes=2, t_steps=500, eps_start=1, eps_min=0.01, eps_decay=.9995):
+        def DeepQNetwork(n_episodes=3, t_steps=500, eps_start=1, eps_min=0.01, eps_decay=.9995):
             scores = []
             scores_window = deque(maxlen=100)
             eps = eps_start
