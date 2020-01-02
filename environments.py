@@ -87,13 +87,12 @@ class Environment:
         indices = np.array(np.argwhere(self._action_space==255))
         agent_pos = tuple(indices[np.random.randint(0,len(indices))])
         print('Agent pos: ', agent_pos)
-        remote_idxs = [a for a in indices if abs(a[0]-agent_pos[0])+abs(a[1]-agent_pos[1]) >= 4]
+        remote_idxs = [a for a in indices if abs(a[0]-agent_pos[0])+abs(a[1]-agent_pos[1]) >= 3]
         exit_pos = tuple(remote_idxs[np.random.randint(0,len(remote_idxs))])
         print('Exit pos: ', exit_pos)
         self._action_space[agent_pos] = 50
         self._action_space[exit_pos] = 225
         return agent_pos, exit_pos
-
 
     def step(self, state, action):
         '''
@@ -128,7 +127,8 @@ class Environment:
             reward = -5
             next_state = state
         elif self._action_space[next_state] == 255 or \
-            self._action_space[next_state] == 128:
+            self._action_space[next_state] == 128 or \
+            self._action_space[next_state] == 50:
             reward = -1
         elif next_state == self._exit_pos:
             reward = 10
