@@ -3,6 +3,6 @@
 ## Usage
  In console:
  
- - python learning_management.py
+ - python tkinter_main.py
  
  All parameters are predefined to save time and nerves.
