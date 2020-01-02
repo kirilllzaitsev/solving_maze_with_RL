@@ -116,10 +116,11 @@ if __name__ == "__main__":
     root.title("GUI v.1.2")
     root.columnconfigure(1, weight=1)
     root.rowconfigure(1, weight=1)
+
     app = Application(root)
     app.init_vars()
     app.create_widgets()
     app.create_options()
     app.mainloop()
-    # sys.stdout = DEF_OUTPUT
-    print('fine')
+
+    sys.stdout = DEF_OUTPUT
