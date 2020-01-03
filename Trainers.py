@@ -6,10 +6,142 @@ from collections import deque
 import random
 import AdvAgents
 from environments import Environment
+from abc import ABC, abstractmethod
+import sys
+import msvcrt
 
 
-class Trainer:
+class Trainer(ABC):
+    @abstractmethod
+    def train(self):
+        pass
 
+    @abstractmethod
+    def step(self, *args):
+        pass
+
+
+class TrainerStd(Trainer):
+    def __init__(self, env, agent, n_episodes=10, t_steps=500,
+                 eps_start=1, eps_min=0.001, eps_decay=.95):
+        self.env = env
+        self.agent = agent
+        self.n_episodes = n_episodes
+        self.t_steps = t_steps
+        self.eps_start = eps_start
+        self.eps_min = eps_min
+        self.eps_decay = eps_decay
+
+    def train(self, plot_every=100):
+        Q = self.agent.Q
+        nA = self.agent._nA
+        env = self.env
+        alpha = self.agent._alpha
+        gamma = self.agent._gamma
+        eps = self.agent.eps
+        eps_decay = self.agent._eps_decay
+        eps_min = self.agent._eps_min
+
+        # monitor performance
+        tmp_scores = deque(maxlen=plot_every)  # deque for keeping track of scores
+        avg_scores = deque(maxlen=self.n_episodes)  # average scores over every plot_every episodes
+        for i_episode in range(1, self.n_episodes + 1):
+            # monitor progress
+            if i_episode % 1000 == 0:
+                print("\rEpisode {}/{}".format(i_episode, self.n_episodes), end="")
+                sys.stdout.flush()
+            score = 0
+            state = env.reset()  # start episode
+            state = tuple(state)
+            print('RESET ENV')
+            eps = max(eps * eps_decay, eps_min) ** 2
+            action = self.agent._strategy._policy.get_action(Q, state, nA, eps)
+            while True:
+                if msvcrt.kbhit():
+                    try:
+                        self.env.close()
+                    except:
+                        pass
+                    return Q
+                next_state, reward, done, _ = self.step(state, action)  # take action, observe reward and state
+                next_state = tuple(next_state)
+                print('Action: ', action, 'State: ', state,
+                      'Reward: ', reward, 'Next state: ', next_state)
+                score += reward
+
+                if not done:
+                    Q[state][action] = self.agent._strategy.update(alpha, gamma, Q,
+                                                                   state, action, reward, next_state=next_state,
+                                                                   next_action=None, eps=eps)
+                    next_action = self.agent._strategy._policy.get_action(Q, next_state, nA, eps)
+
+                    state = next_state
+                    action = next_action
+                    # print(state, action, reward)
+                if done:
+                    Q[state][action] = self.agent._strategy.update(alpha, gamma, Q,
+                                                                   state, action, reward)
+
+                    break
+                tmp_scores.append(score)
+
+            if i_episode % plot_every == 0:
+                avg_scores.append(np.mean(tmp_scores))
+        # plot performance
+        self._history = avg_scores
+        # print best 100-episode performance
+        try:
+            print(f'Best Average Reward over {plot_every} Episodes: {np.max(avg_scores)}')
+        except:
+            print('Not enough episodes to calculate statistics')
+
+        return Q
+
+    @abstractmethod
+    def step(self, *args):
+        pass
+
+
+class GymTrainerStd(TrainerStd):
+    def __init__(self, env, agent, n_episodes):
+        super().__init__(env, agent, n_episodes)
+        self._action_space = ['N', 'E', 'S', 'W']
+        self.env = gym.make('maze-random-5x5-v0')
+
+    def step(self, state, action):
+        print(action)
+        return self.env.step(self._action_space[int(action)])
+
+    def demo(self):
+        state = self.env.reset()
+        for j in range(200):
+            action = self.select_action(state)
+            self.env.render()
+            next_state, action, done, _ = self.env.step(action)
+            if done:
+                break
+            state = next_state
+
+    def select_action(self, state, explore_rate=0.):
+        # Select a random action
+        if random.random() < explore_rate:
+            action = self.env.action_space.sample()
+        # Select the action with the highest q
+        else:
+            action = int(random.choice(np.arange(self.env.action_space.n)))
+        return action
+
+
+class CustomTrainerStd(TrainerStd):
+    def __init__(self, env, agent, n_episodes):
+        super().__init__(env, agent, n_episodes)
+        self._action_space = [0, 1, 2, 3]
+
+    def step(self, state, action):
+        return self.env.step(state, self._action_space[action])
+
+
+class TrainerDQN(ABC):
     def __init__(self, env, agent, n_episodes=10, t_steps=500,
                  eps_start=1, eps_min=0.001, eps_decay=.95):
         self.env = env
@@ -36,6 +168,12 @@ class Trainer:
                 score += reward
                 if done:
                     break
+                if msvcrt.kbhit():
+                    try:
+                        self.env.close()
+                    except:
+                        pass
+                    return scores
             scores_window.append(score)
             scores.append(score)
             eps = max(self.eps_min, eps * self.eps_decay)
@@ -48,11 +186,12 @@ class Trainer:
                 break
         return scores
 
+    @abstractmethod
     def step(self, *args):
         pass
 
 
-class GymTrainer(Trainer):
+class GymTrainerDQN(TrainerDQN):
     def __init__(self, env, agent, n_episodes):
         super().__init__(env, agent, n_episodes)
         self._action_space = ['N', 'E', 'S', 'W']
@@ -81,7 +220,7 @@ class GymTrainer(Trainer):
         return action
 
 
-class CustomTrainer(Trainer):
+class CustomTrainerDQN(TrainerDQN):
     def __init__(self, env, agent, n_episodes):
         super().__init__(env, agent, n_episodes)
         self._action_space = [0, 1, 2, 3]
