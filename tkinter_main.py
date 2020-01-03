@@ -16,28 +16,35 @@ ENVIRONMENTS = [
 
 DEF_OUTPUT = sys.stdout
 
+
 class IORedirector:
-    '''A general class for redirecting I/O to this Text widget.'''
+    """A general class for redirecting I/O to this Text widget."""
     def __init__(self, text_area):
         self.text_area = text_area
 
 
 class StdoutRedirector(IORedirector):
-    '''A class for redirecting stdout to this Text widget.'''
+    """A class for redirecting stdout to this Text widget."""
 
     def write(self, str):
         self.text_area.insert("end", str)
+
     def flush(self):
         pass
 
 
 class Application(tk.Frame):
+    """The class responsible for GUI and learning configs"""
+
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
         self.row_indexer = 0
 
     def create_widgets(self):
+        """
+        Layout with all entries, labels and text
+        """
         self.learning_hist_tb = tk.Text(self.master)
         self.learning_hist_tb.grid(row=self.row_indexer, columnspan=3)
 
@@ -88,9 +95,14 @@ class Application(tk.Frame):
         self.environment.set("Custom")
 
         self.epochs = tk.IntVar()
+        self.epochs.set(20)
         self.env_size = tk.IntVar()
+        self.env_size.set(7)
 
     def create_options(self):
+        """
+        Add radios with strategy/environment to layout
+        """
         self.row_indexer = 2
         for text, topping in STRATEGIES:
             tk.Radiobutton(root, text=text, variable=self.strategy, value=topping).grid(row=self.row_indexer,
@@ -104,8 +116,15 @@ class Application(tk.Frame):
             self.row_indexer += 1
 
     def start(self, strategy, epochs, env, env_size):
+        """
+        Run learning on Start btn press
+        """
         if self.strategy.get() and self.epochs.get() and self.environment.get() and self.env_size_entry.get():
-            manager.main(strategy, epochs, env, (env_size, env_size))
+            if self.epochs.get() == 0 or self.env_size_entry.get() == 0:
+                print('Mandatory data is missing')
+                self.env_size_entry.focus_set()
+            else:
+                manager.main(strategy, epochs, env, (env_size, env_size))
         else:
             print('Mandatory data is missing')
             self.env_size_entry.focus_set()
