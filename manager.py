@@ -65,12 +65,11 @@ class Manager:
 
             while True:
              
-                next_state, reward, done = env.step(state, action) # take action, observe reward and state
+                next_state, reward, done, _ = env.step(state, action) # take action, observe reward and state
                 print('Action: ', action, 'State: ', state,\
                     'Reward: ', reward, 'Next state: ', next_state)
                 score += reward  
-                
-                                           
+
                 if not done:
                     Q[state][action] = self._agent._strategy.update(alpha, gamma, Q, \
                                                     state, action, reward, next_state=next_state, next_action=None, eps=eps)
@@ -85,9 +84,8 @@ class Manager:
                       
                     break
                 tmp_scores.append(score)  
-            if (i_episode % plot_every == 0):
+            if i_episode % plot_every == 0:
                 avg_scores.append(np.mean(tmp_scores))
-
         # plot performance
         self._history = avg_scores
         # print best 100-episode performance
@@ -98,34 +96,57 @@ class Manager:
         pass
 
 
-def main(strategy, epochs, env, env_size=(10, 10)):
+def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
     # if "DQN" is in strategy:
     if env == 'Custom':
-        manager = Manager.getInstance(env_size, strategy, epochs, 4)
-        Q = manager.start_learning()
-        print('Resulting table of (state, action) value-pairs: ')
-        pp.pprint(Q)
-        df = pd.DataFrame.from_dict(Q)
+        if 'Sarsa' in strategy:
+            manager = Manager.getInstance(env_size, strategy, epochs, 4)
+            Q = manager.start_learning()
+            print('Resulting table of (state, action) value-pairs: ')
+            pp.pprint(Q)
+            df = pd.DataFrame.from_dict(Q)
 
-        plt.plot(np.linspace(0, manager._num_episodes, len(manager._history), endpoint=False),
-                 np.asarray(manager._history))
-        plt.xlabel('Episode Number')
-        plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
+            plt.plot(np.linspace(0, manager._num_episodes, len(manager._history), endpoint=False),
+                     np.asarray(manager._history))
+            plt.xlabel('Episode Number')
+            plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
 
-        fig = plt.figure(figsize=(11, 6))
+            fig = plt.figure(figsize=(11, 6))
 
-        ax1 = fig.add_subplot(2, 2, 1)
-        ax2 = fig.add_subplot(2, 2, 2)
-        ax3 = fig.add_subplot(3, 1, 3)
+            ax1 = fig.add_subplot(2, 2, 1)
+            ax2 = fig.add_subplot(2, 2, 2)
+            ax3 = fig.add_subplot(3, 1, 3)
 
-        manager._env.display_env(ax1)
-        manager._env.plot_optimal_path(Q, ax2)
+            manager._env.display_env(ax1)
+            manager._env.plot_optimal_path(Q, ax2)
 
-        ax3.set_title('Learned Q-table')
-        sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
+            ax3.set_title('Learned Q-table')
+            sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
 
-        plt.show()
+            plt.show()
+        else:
+            torch.cuda.current_device()
+            agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
+            env = Environment(env_size)
+            ct = CustomTrainer(env, agent, epochs)
+            scores = ct.train()
+            fgr = plt.figure()
+            ax = plt.subplot(111)
+            plt.plot(np.arange(len(scores)), scores)
+            plt.xlabel('Episodes')
+            plt.ylabel('Scores')
+            plt.show()
     else:
-        gt = GymTrainer()
-        gt.train()
+        torch.cuda.current_device()
+        agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
+        env = Environment(env_size)
+        gt = GymTrainer(env, agent, epochs)
+        scores = gt.train()
+        fgr = plt.figure()
+        ax = plt.subplot(111)
+        plt.plot(np.arange(len(scores)), scores)
+        plt.xlabel('Episodes')
+        plt.ylabel('Scores')
+        plt.show()
+
 

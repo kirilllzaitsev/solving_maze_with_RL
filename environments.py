@@ -134,8 +134,11 @@ class Environment:
             reward = 10
             done = True
 
-        return next_state, reward, done
+        return next_state, reward, done, {}
 
     def reset(self):
         return self._init_state
+
+    def render(self):
+        pass
 
