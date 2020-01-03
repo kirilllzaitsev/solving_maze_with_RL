@@ -18,7 +18,7 @@ class Strategy:
        self._policy = policy
 
     @abstractmethod
-    def update(self):
+    def update(self, *args):
         pass
 
 
@@ -64,6 +64,7 @@ class ExpectedSarsa(Strategy):
         Exp_sarsa_next = np.dot(policy_s, Q[next_state])+(1-eps)*best_a
         new_value = Q[state][action] + alpha*(reward+gamma*Exp_sarsa_next-current)
         return new_value
+
 
 class StrategyFactory:
    def init_strategy(self, typ):

@@ -1,15 +1,13 @@
 import numpy as np
 from numpy.random import randint 
-import matplotlib.pyplot as plt
 
 
 class Cell:
-
-
     def __init__(self, x, y, color):
         self._x = x
         self._y = y
         self._color = color
+
 
 class Environment:
     
@@ -34,11 +32,11 @@ class Environment:
     def get_state(self):
         return self.state
 
-    def init_action_space(self, shape, complexity=.5, density =.5):
+    def init_action_space(self, shape, complexity=.5, density=.5):
         # Only ODD shapes
         # Adjust complexity and density relative to action_space size
         complexity = int(complexity*(5*(shape[0]+shape[1])))
-        density    = int(density*(shape[0]//2*shape[1]//2))
+        density = int(density*(shape[0]//2*shape[1]//2))
         # Build actual action_space
         Z = np.zeros(shape, dtype=bool)+255
         # Fill borders
@@ -95,20 +93,20 @@ class Environment:
         return agent_pos, exit_pos
 
     def step(self, state, action):
-        '''
+        """
             Returns tuple (next_state, reward, done)
 
             ###################
-            #                 #  
-            #       0         #  
-            #       /\        #  
+            #                 #
+            #       0         #
+            #       /\        #
             #       ||        #
             #   3 <= A => 1   #
-            #       ||        #  
-            #       \/        #      
+            #       ||        #
+            #       \/        #
             #       2         #
             ###################
-        '''
+        """
         done = False
         next_state = tuple()
         reward = 0

@@ -1,11 +1,12 @@
 import numpy as np
-
+from abc import ABC, abstractmethod
 
 class Policy:
     def __init__(self):
         pass
 
-    def get_action(self):
+    @abstractmethod
+    def get_action(self, *args):
         pass
 
 
@@ -14,8 +15,8 @@ class Epsilon(Policy):
         super().__init__()
 
     def get_action(self, Q, state, nA=None, eps=None):
-        '''
-        
+        """
+
         Inputs:
         - Q (dict): current agent's Q-table
         - state (tuple): environment's state
@@ -24,7 +25,7 @@ class Epsilon(Policy):
 
         Returns:
         - action (int): action, chosen with given state and epsilon
-        '''
+        """
         if np.random.random_sample() > eps:
             return np.argmax(Q[state])
         else:
@@ -32,21 +33,19 @@ class Epsilon(Policy):
 
 
 class Epsilongreedy(Policy):
-
-
     def __init__(self):
         super().__init__()
 
     def get_action(self, Q, next_state, nA=None, eps=None):
-        '''
-        
+        """
+
         Inputs:
         - Q (dict): current agent's Q-table
         - state (tuple): environment's state
 
         Returns:
         - action (int): action that maximizes reward in given state
-        '''
+        """
         policy_s = np.ones(nA)*eps/nA
         best_a = np.argmax(Q[next_state])
         policy_s[best_a] = 1 - eps + eps/nA
@@ -56,6 +55,6 @@ class Epsilongreedy(Policy):
         
 
 class PolicyFactory:
-   def init_policy(self, typ):
+    def init_policy(self, typ):
       targetclass = typ.capitalize()
       return globals()[targetclass]()
