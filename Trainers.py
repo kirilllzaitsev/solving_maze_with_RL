@@ -24,23 +24,44 @@ class Trainer(ABC):
 class TrainerStd(Trainer):
     def __init__(self, env, agent, n_episodes=10, t_steps=500,
                  eps_start=1, eps_min=0.001, eps_decay=.95):
-        self.env = env
-        self.agent = agent
+        self._env = env
+        self._agent = agent
         self.n_episodes = n_episodes
         self.t_steps = t_steps
         self.eps_start = eps_start
         self.eps_min = eps_min
         self.eps_decay = eps_decay
+        self._history = []
+
+    @property
+    def history(self):
+        return self._history
+
+    @property
+    def env(self):
+        return self._env
+
+    @property
+    def agent(self):
+        return self._agent
+
+    @history.setter
+    def history(self, value):
+        self._history = value
+
+    @env.setter
+    def env(self, value):
+        self._env = value
 
     def train(self, plot_every=100):
         Q = self.agent.Q
-        nA = self.agent._nA
+        nA = self.agent.nA
         env = self.env
-        alpha = self.agent._alpha
-        gamma = self.agent._gamma
+        alpha = self.agent.alpha
+        gamma = self.agent.gamma
         eps = self.agent.eps
-        eps_decay = self.agent._eps_decay
-        eps_min = self.agent._eps_min
+        eps_decay = self.agent.eps_decay
+        eps_min = self.agent.eps_min
 
         # monitor performance
         tmp_scores = deque(maxlen=plot_every)  # deque for keeping track of scores
@@ -109,7 +130,6 @@ class GymTrainerStd(TrainerStd):
         self.env = gym.make('maze-random-5x5-v0')
 
     def step(self, state, action):
-        print(action)
         return self.env.step(self._action_space[int(action)])
 
     def demo(self):
@@ -138,7 +158,7 @@ class CustomTrainerStd(TrainerStd):
         self._action_space = [0, 1, 2, 3]
 
     def step(self, state, action):
-        return self.env.step(state, self._action_space[action])
+        return self.env.step(state, self._action_space[int(action)])
 
 
 class TrainerDQN(ABC):
