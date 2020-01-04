@@ -7,6 +7,7 @@ import seaborn as sns
 import pandas as pd
 from Trainers import *
 from abc import ABC, abstractmethod
+
 pp = pprint.PrettyPrinter(indent=4)
 
 
@@ -37,7 +38,7 @@ class AbstractFactory(ABC):
         pass
 
 
-class ConcreteFactoryCustom(AbstractFactory):
+class FactoryCustomEnv(AbstractFactory):
     def create_trainer_std(self, env, agent, epochs) -> CustomTrainerStd:
         return CustomTrainerStd(env, agent, epochs)
 
@@ -45,7 +46,7 @@ class ConcreteFactoryCustom(AbstractFactory):
         return CustomTrainerDQN(env, agent, epochs)
 
 
-class ConcreteFactoryGym(AbstractFactory):
+class FactoryGymEnv(AbstractFactory):
     def create_trainer_std(self, env, agent, epochs) -> GymTrainerStd:
         return GymTrainerStd(env, agent, epochs)
 
@@ -65,17 +66,35 @@ class Manager:
         else:
             print("Instance already created:", self.get_instance(strategy, env_size, num_episodes, num_actions))
 
+    @property
+    def history(self):
+        return self._history
+
+    @property
+    def agent(self):
+        return self._agent
+
+    @property
+    def env(self):
+        return self._env
+
+    @property
+    def num_episodes(self):
+        return self._num_episodes
+
     @classmethod
     def get_instance(cls, env_size, strategy, num_episodes, num_actions):
         if not cls.__instance:
             cls.__instance = Manager(env_size, strategy, num_episodes, num_actions)
         return cls.__instance
 
-    def init_agent(self, strategy, num_actions):
+    @staticmethod
+    def init_agent(strategy, num_actions):
         agent = Agent(strategy, num_actions)
         return agent
 
-    def init_env(self, env_size):
+    @staticmethod
+    def init_env(env_size):
         env = Environment(env_size)
         return env
 
@@ -94,33 +113,56 @@ class Manager:
         pass
 
 
-def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
+class Plotter:
+    @staticmethod
+    def plot_std(trainer, Q):
+        df = pd.DataFrame.from_dict(Q)
+        plt.plot(np.linspace(0, trainer.n_episodes, len(trainer.history), endpoint=False),
+                 np.asarray(trainer.history))
+        plt.xlabel('Episode Number')
+        plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
+        fig = plt.figure(figsize=(11, 6))
+        ax1 = fig.add_subplot(2, 2, 1)
+        ax2 = fig.add_subplot(2, 2, 2)
+        ax3 = fig.add_subplot(3, 1, 3)
+        trainer.env.display_env(ax1)
+        trainer.env.plot_optimal_path(Q, ax2)
+        ax3.set_title('Learned Q-table')
+        sns.heatmap(df, cmap='coolwarm', annot=False, fmt='g', ax=ax3)
+        plt.show()
 
+    @staticmethod
+    def plot_dqn():
+        pass
+
+
+def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
     if env == 'Custom':
-        factory = ConcreteFactoryCustom()
+        factory = FactoryCustomEnv()
         if 'Sarsa' in strategy:
             manager = Manager.get_instance(env_size, strategy, epochs, 4)
             strategy_type = 'std'
-            cts = manager.run(strategy_type, factory, manager._env, manager._agent, epochs)
+            cts = manager.run(strategy_type, factory, manager.env, manager.agent, epochs)
             Q = cts.train()
             print('Resulting table of (state, action) value-pairs: ')
             pp.pprint(Q)
-            df = pd.DataFrame.from_dict(Q)
+            Plotter.plot_std(cts, Q)
+            # df = pd.DataFrame.from_dict(Q)
 
-            plt.plot(np.linspace(0, cts.n_episodes, len(cts._history), endpoint=False),
-                     np.asarray(cts._history))
-            plt.xlabel('Episode Number')
-            plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
-            fig = plt.figure(figsize=(11, 6))
-            ax1 = fig.add_subplot(2, 2, 1)
-            ax2 = fig.add_subplot(2, 2, 2)
-            ax3 = fig.add_subplot(3, 1, 3)
-            cts.env.display_env(ax1)
-            cts.env.plot_optimal_path(Q, ax2)
-            ax3.set_title('Learned Q-table')
-            sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
-
-            plt.show()
+            # plt.plot(np.linspace(0, cts.n_episodes, len(cts.history), endpoint=False),
+            #          np.asarray(cts.history))
+            # plt.xlabel('Episode Number')
+            # plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
+            # fig = plt.figure(figsize=(11, 6))
+            # ax1 = fig.add_subplot(2, 2, 1)
+            # ax2 = fig.add_subplot(2, 2, 2)
+            # ax3 = fig.add_subplot(3, 1, 3)
+            # cts.env.display_env(ax1)
+            # cts.env.plot_optimal_path(Q, ax2)
+            # ax3.set_title('Learned Q-table')
+            # sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
+            #
+            # plt.show()
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -135,12 +177,15 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             plt.ylabel('Scores')
             plt.show()
     else:
-        factory = ConcreteFactoryGym()
+        factory = FactoryGymEnv()
         if 'Sarsa' in strategy:
             manager = Manager.get_instance(env_size, strategy, epochs, 4)
             strategy_type = 'std'
             env = gym.make('maze-random-5x5-v0')
-            gt = manager.run(strategy_type, factory, env, manager._agent, epochs)
+            gt = manager.run(strategy_type, factory, env, manager.agent, epochs)
+            Q = gt.train()
+            print('Resulting table of (state, action) value-pairs: ')
+            pp.pprint(Q)
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -153,17 +198,17 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         pp.pprint(Q)
         df = pd.DataFrame.from_dict(Q)
 
-        plt.plot(np.linspace(0, gt.n_episodes, len(gt._history), endpoint=False),
-                 np.asarray(gt._history))
+        plt.plot(np.linspace(0, gt.n_episodes, len(gt.history), endpoint=False),
+                 np.asarray(gt.history))
         plt.xlabel('Episode Number')
         plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
         fig = plt.figure(figsize=(11, 6))
-        ax1 = fig.add_subplot(2, 2, 1)
-        ax2 = fig.add_subplot(2, 2, 2)
-        ax3 = fig.add_subplot(3, 1, 3)
-        ax1 = gt.env.render()
-        ax3.set_title('Learned Q-table')
-        sns.heatmap(df, cmap='coolwarm', annot=False, fmt='g', ax=ax3)
+        # ax1 = fig.add_subplot(2, 2, 1)
+        # ax2 = fig.add_subplot(2, 2, 2)
+        # ax3 = fig.add_subplot(2, 1, 3)
+        gt.env.render()
+        plt.title('Learned Q-table')
+        sns.heatmap(df, cmap='coolwarm', annot=False, fmt='g')
 
         plt.show()
 
