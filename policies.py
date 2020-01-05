@@ -1,5 +1,6 @@
 import numpy as np
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+
 
 class Policy:
     def __init__(self):
@@ -38,7 +39,6 @@ class Epsilongreedy(Policy):
 
     def get_action(self, Q, next_state, nA=None, eps=None):
         """
-
         Inputs:
         - Q (dict): current agent's Q-table
         - state (tuple): environment's state
@@ -55,6 +55,7 @@ class Epsilongreedy(Policy):
         
 
 class PolicyFactory:
-    def init_policy(self, typ):
-      targetclass = typ.capitalize()
-      return globals()[targetclass]()
+    @staticmethod
+    def init_policy(typ):
+        targetclass = typ.capitalize()
+        return globals()[targetclass]()

@@ -53,7 +53,7 @@ class TrainerStd(Trainer):
     def env(self, value):
         self._env = value
 
-    def train(self, plot_every=100):
+    def train(self, plot_every=100, t_steps=200):
         Q = self.agent.Q
         nA = self.agent.nA
         env = self.env
@@ -76,14 +76,16 @@ class TrainerStd(Trainer):
             state = tuple(state)
             print('RESET ENV')
             eps = max(eps * eps_decay, eps_min) ** 2
-            action = self.agent._strategy._policy.get_action(Q, state, nA, eps)
-            while True:
+            action = self.agent.strategy.policy.get_action(Q, state, nA, eps)
+
+            for t in range(t_steps):
                 if msvcrt.kbhit():
                     try:
                         self.env.close()
                     except:
                         pass
                     return Q
+                self.env.render()
                 next_state, reward, done, _ = self.step(state, action)  # take action, observe reward and state
                 next_state = tuple(next_state)
                 print('Action: ', action, 'State: ', state,
@@ -91,17 +93,17 @@ class TrainerStd(Trainer):
                 score += reward
 
                 if not done:
-                    Q[state][action] = self.agent._strategy.update(alpha, gamma, Q,
-                                                                   state, action, reward, next_state=next_state,
-                                                                   next_action=None, eps=eps)
-                    next_action = self.agent._strategy._policy.get_action(Q, next_state, nA, eps)
+                    Q[state][action] = self.agent.strategy.update(alpha, gamma, Q,
+                                                                  state, action, reward, next_state=next_state,
+                                                                  next_action=None, eps=eps)
+                    next_action = self.agent.strategy.policy.get_action(Q, next_state, nA, eps)
 
                     state = next_state
                     action = next_action
                     # print(state, action, reward)
                 if done:
-                    Q[state][action] = self.agent._strategy.update(alpha, gamma, Q,
-                                                                   state, action, reward)
+                    Q[state][action] = self.agent.strategy.update(alpha, gamma, Q,
+                                                                  state, action, reward)
 
                     break
                 tmp_scores.append(score)

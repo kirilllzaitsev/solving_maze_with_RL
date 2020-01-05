@@ -125,15 +125,23 @@ class Plotter:
         ax1 = fig.add_subplot(2, 2, 1)
         ax2 = fig.add_subplot(2, 2, 2)
         ax3 = fig.add_subplot(3, 1, 3)
-        trainer.env.display_env(ax1)
-        trainer.env.plot_optimal_path(Q, ax2)
+        trainer.env.render(ax1)
+        try:
+            trainer.env.plot_optimal_path(Q, ax2)
+        except AttributeError:
+            pass
         ax3.set_title('Learned Q-table')
         sns.heatmap(df, cmap='coolwarm', annot=False, fmt='g', ax=ax3)
         plt.show()
 
     @staticmethod
-    def plot_dqn():
-        pass
+    def plot_dqn(scores):
+        fgr = plt.figure()
+        ax = plt.subplot(111)
+        plt.plot(np.arange(len(scores)), scores)
+        plt.xlabel('Episodes')
+        plt.ylabel('Scores')
+        plt.show()
 
 
 def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
@@ -147,22 +155,6 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             print('Resulting table of (state, action) value-pairs: ')
             pp.pprint(Q)
             Plotter.plot_std(cts, Q)
-            # df = pd.DataFrame.from_dict(Q)
-
-            # plt.plot(np.linspace(0, cts.n_episodes, len(cts.history), endpoint=False),
-            #          np.asarray(cts.history))
-            # plt.xlabel('Episode Number')
-            # plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
-            # fig = plt.figure(figsize=(11, 6))
-            # ax1 = fig.add_subplot(2, 2, 1)
-            # ax2 = fig.add_subplot(2, 2, 2)
-            # ax3 = fig.add_subplot(3, 1, 3)
-            # cts.env.display_env(ax1)
-            # cts.env.plot_optimal_path(Q, ax2)
-            # ax3.set_title('Learned Q-table')
-            # sns.heatmap(df, cmap='coolwarm',  annot=False, fmt='g', ax=ax3)
-            #
-            # plt.show()
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -170,12 +162,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             env = Environment(env_size)
             ct = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = ct.train()
-            fgr = plt.figure()
-            ax = plt.subplot(111)
-            plt.plot(np.arange(len(scores)), scores)
-            plt.xlabel('Episodes')
-            plt.ylabel('Scores')
-            plt.show()
+            Plotter.plot_dqn(scores)
     else:
         factory = FactoryGymEnv()
         if 'Sarsa' in strategy:
@@ -186,30 +173,15 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             Q = gt.train()
             print('Resulting table of (state, action) value-pairs: ')
             pp.pprint(Q)
+            Plotter.plot_std(gt, Q)
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
             agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
             env = Environment(env_size)
             gt = Manager.run(strategy_type, factory, env, agent, epochs)
-            # gt = GymTrainerDQN(env, agent, epochs)
-        Q = gt.train()
-        print('Resulting table of (state, action) value-pairs: ')
-        pp.pprint(Q)
-        df = pd.DataFrame.from_dict(Q)
+            scores = gt.train()
+            Plotter.plot_dqn(scores)
 
-        plt.plot(np.linspace(0, gt.n_episodes, len(gt.history), endpoint=False),
-                 np.asarray(gt.history))
-        plt.xlabel('Episode Number')
-        plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
-        fig = plt.figure(figsize=(11, 6))
-        # ax1 = fig.add_subplot(2, 2, 1)
-        # ax2 = fig.add_subplot(2, 2, 2)
-        # ax3 = fig.add_subplot(2, 1, 3)
-        gt.env.render()
-        plt.title('Learned Q-table')
-        sns.heatmap(df, cmap='coolwarm', annot=False, fmt='g')
-
-        plt.show()
 
 
