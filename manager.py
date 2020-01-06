@@ -158,10 +158,6 @@ class Command(ABC):
 
 
 class SimpleCommand(Command):
-    """
-    Некоторые команды способны выполнять простые операции самостоятельно.
-    """
-
     def __init__(self, env_size, strategy, num_episodes, num_actions) -> None:
         self._env_size = env_size
         self._strategy = strategy
@@ -170,43 +166,26 @@ class SimpleCommand(Command):
 
     def execute(self) -> None:
         print(f"Manager was initialised with the following parameters: \n"
-              f"Maze size: {self._env_size}.\nStrategy: {self._strategy}.\n")
+              f"Maze size: {self._env_size}.\nStrategy: {self._strategy}.\n"
+              f"Epochs: {self._num_episodes}.\nActions: {self._num_actions}.\n")
 
 
 class ComplexCommand(Command):
-    """
-    Но есть и команды, которые делегируют более сложные операции другим
-    объектам, называемым «получателями».
-    """
-
     def __init__(self, receiver, trainer, result) -> None:
-        """
-        Сложные команды могут принимать один или несколько объектов-получателей
-        вместе с любыми данными о контексте через конструктор.
-        """
-
         self._receiver = receiver
         self._trainer = trainer
         self._result = result
 
     def execute(self) -> None:
-        """
-        Команды могут делегировать выполнение любым методам получателя.
-        """
-
-        print("ComplexCommand: Complex stuff should be done by a receiver object", end="")
-        print(1+1)
-        print(type(self._result))
         if isinstance(self._result, collections.defaultdict):
             self._receiver.plot_std(self._trainer, self._result)
         if isinstance(self._result, list):
             self._receiver.plot_dqn(self._result)
-        # self._receiver.do_something_else(self._b)
 
 
 def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
     manager = Manager.get_instance(env_size, strategy, epochs, 4)
-    manager.set_on_start(SimpleCommand("Say Hi!"))
+    manager.set_on_start(SimpleCommand(env_size, strategy, epochs, 4))
     manager._on_start.execute()
 
     if env == 'Custom':
@@ -219,7 +198,6 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
                 Plotter, trainer, Q))
             # print('Resulting table of (state, action) value-pairs: ')
             # pp.pprint(Q)
-            # Plotter.plot_std(trainer, Q)
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -229,20 +207,15 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             scores = trainer.train()
             manager.set_on_finish(ComplexCommand(
                 Plotter, trainer, scores))
-            # Plotter.plot_dqn(scores)
     else:
         factory = FactoryGymEnv()
         if 'Sarsa' in strategy:
-            # manager = Manager.get_instance(env_size, strategy, epochs, 4)
             strategy_type = 'std'
             env = gym.make('maze-random-5x5-v0')
             trainer = manager.run(strategy_type, factory, env, manager.agent, epochs)
             Q = trainer.train()
             manager.set_on_finish(ComplexCommand(
-                trainer, "Send email", "Save report"))
-            print('Resulting table of (state, action) value-pairs: ')
-            pp.pprint(Q)
-            Plotter.plot_std(trainer, Q)
+                Plotter, trainer, Q))
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -251,8 +224,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
             manager.set_on_finish(ComplexCommand(
-                trainer, "Send email", "Save report"))
-            Plotter.plot_dqn(scores)
+                Plotter, trainer, scores))
 
     manager._on_finish.execute()
 

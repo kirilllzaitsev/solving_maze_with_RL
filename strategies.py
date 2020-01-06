@@ -57,8 +57,6 @@ class ExpectedSarsa(Strategy):
         current = Q[state][action]
         policy_s = np.ones(nA)*eps/nA
         best_a = np.argmax(Q[next_state])
-        # policy_s[best_a] = 1 - eps + eps/nA
-        # next_action = self._policy.get_action(Q, next_state)
         exp_sarsa_next = np.dot(policy_s, Q[next_state])+(1-eps)*best_a
         new_value = Q[state][action] + alpha*(reward+gamma*exp_sarsa_next-current)
         return new_value
@@ -74,6 +72,7 @@ class Dqn(Strategy):
 
 
 class StrategyFactory:
-   def init_strategy(self, typ):
-      targetclass = typ.capitalize()
-      return globals()[targetclass]()
+    @staticmethod
+    def init_strategy(typ):
+        target_class = typ.capitalize()
+        return globals()[target_class]()

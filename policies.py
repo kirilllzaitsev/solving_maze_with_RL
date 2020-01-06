@@ -57,5 +57,5 @@ class Epsilongreedy(Policy):
 class PolicyFactory:
     @staticmethod
     def init_policy(typ):
-        targetclass = typ.capitalize()
-        return globals()[targetclass]()
+        target_class = typ.capitalize()
+        return globals()[target_class]()
