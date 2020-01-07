@@ -86,19 +86,19 @@ class DQNAgent:
             gamma (float): discount factor
         """
         states, actions, rewards, next_states, dones = experiences
-        states = torch.from_numpy(states).float().to(device)
-        actions = torch.from_numpy(actions).long().to(device)
-        rewards = torch.from_numpy(rewards).float().to(device)
-        next_states = torch.from_numpy(next_states).float().to(
+        states = torch.tensor([states]).float().to(device)
+        actions = torch.tensor([actions]).long().to(device)
+        rewards = torch.tensor([rewards]).float().to(device)
+        next_states = torch.tensor([next_states]).float().to(
             device)
-        dones = torch.from_numpy(dones).astype(np.uint8).float().to(device)
+        dones = torch.tensor(dones).float().to(device)
         # Get max predicted Q values (for next states) from target model
-        Q_targets_next = self.qnetwork(next_states).detach().max(1)[0].unsqueeze(1)
+        Q_targets_next = self.qnetwork(next_states)
         # Compute Q targets for current states
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
         # Get expected Q values from local model
-        Q_expected = self.qnetwork(states).gather(1, actions)
+        Q_expected = self.qnetwork(states)
 
         # Compute loss
         loss = F.mse_loss(Q_expected, Q_targets)
