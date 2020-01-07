@@ -1,9 +1,0 @@
-{
-    "python.pythonPath": "F:\\Anaconda\\envs\\bigdata\\python.exe",
-    "files.exclude": {
-        "**/.classpath": true,
-        "**/.project": true,
-        "**/.settings": true,
-        "**/.factorypath": true
-    }
-}

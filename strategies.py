@@ -6,6 +6,7 @@ class Strategy:
 
     def __init__(self, policy=None):
         if policy is not None:
+
             self._policy = PolicyFactory().init_policy(policy)
 
     @property
@@ -26,7 +27,7 @@ class Sarsamax(Strategy):
     def __init__(self, policy='EpsilonGreedy'):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action = None, eps = None):
+    def update(self, alpha, gamma, Q, state, action, reward, next_state=None, next_action=None, eps=None):
         """
         Update rule for Sarsamax.
 
