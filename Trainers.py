@@ -116,7 +116,7 @@ class TrainerStd(Trainer):
         try:
             print(f'Best Average Reward over {plot_every} Episodes: {np.max(avg_scores)}')
         except:
-            print('Not enough episodes to calculate statistics')
+            pass
 
         return Q
 
@@ -129,7 +129,7 @@ class GymTrainerStd(TrainerStd):
     def __init__(self, env, agent, n_episodes):
         super().__init__(env, agent, n_episodes)
         self._action_space = ['N', 'E', 'S', 'W']
-        self.env = gym.make('maze-random-5x5-v0')
+        # self.env = gym.make('maze-random-5x5-v0')
 
     def step(self, state, action):
         return self.env.step(self._action_space[int(action)])

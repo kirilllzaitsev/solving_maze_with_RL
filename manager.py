@@ -119,6 +119,9 @@ class Manager:
 class Plotter:
     @staticmethod
     def plot_std(trainer, Q):
+        if trainer.n_episodes <= 100:
+            print('\nNot enough epochs to calculate statistics')
+            return
         df = pd.DataFrame.from_dict(Q)
         plt.plot(np.linspace(0, trainer.n_episodes, len(trainer.history), endpoint=False),
                  np.asarray(trainer.history))
@@ -148,10 +151,6 @@ class Plotter:
 
 
 class Command(ABC):
-    """
-    Интерфейс Команды объявляет метод для выполнения команд.
-    """
-
     @abstractmethod
     def execute(self) -> None:
         pass
@@ -196,8 +195,6 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             Q = trainer.train()
             manager.set_on_finish(ComplexCommand(
                 Plotter, trainer, Q))
-            # print('Resulting table of (state, action) value-pairs: ')
-            # pp.pprint(Q)
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
@@ -211,7 +208,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         factory = FactoryGymEnv()
         if 'Sarsa' in strategy:
             strategy_type = 'std'
-            env = gym.make('maze-random-5x5-v0')
+            env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
             trainer = manager.run(strategy_type, factory, env, manager.agent, epochs)
             Q = trainer.train()
             manager.set_on_finish(ComplexCommand(
