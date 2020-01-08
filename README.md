@@ -1,6 +1,6 @@
 # Project "Labyrinth".
 
-##About
+## About
 Were there any troubles while solving the Maze problem?
 Ans is "yes" in case standard solvers were to show up in the real world.
 To tackle this problem smart robots with generalization ability came into 
