@@ -129,7 +129,6 @@ class GymTrainerStd(TrainerStd):
     def __init__(self, env, agent, n_episodes):
         super().__init__(env, agent, n_episodes)
         self._action_space = ['N', 'E', 'S', 'W']
-        # self.env = gym.make('maze-random-5x5-v0')
 
     def step(self, state, action):
         return self.env.step(self._action_space[int(action)])
@@ -217,7 +216,6 @@ class GymTrainerDQN(TrainerDQN):
     def __init__(self, env, agent, n_episodes):
         super().__init__(env, agent, n_episodes)
         self._action_space = ['N', 'E', 'S', 'W']
-        self.env = gym.make('maze-random-5x5-v0')
 
     def step(self, state, action):
         return self.env.step(self._action_space[action])

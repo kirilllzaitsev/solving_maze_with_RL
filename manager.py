@@ -1,41 +1,25 @@
-from SimpleAgents import Agent
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import pprint
-import seaborn as sns
-import pandas as pd
-from Trainers import *
-from abc import ABC, abstractmethod
 import collections
+import pprint
+from abc import ABC, abstractmethod
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+from SimpleAgents import Agent
+from Trainers import *
 
 pp = pprint.PrettyPrinter(indent=4)
-
-
-class AbstractProductA(ABC):
-    @abstractmethod
-    def useful_function_a(self) -> str:
-        pass
-
-
-class AbstractProductB(ABC):
-    @abstractmethod
-    def useful_function_b(self) -> None:
-        pass
-
-    @abstractmethod
-    def another_useful_function_b(self, collaborator: AbstractProductA) -> None:
-        pass
 
 
 class AbstractFactory(ABC):
 
     @abstractmethod
-    def create_trainer_std(self, env, agent, epochs) -> AbstractProductA:
+    def create_trainer_std(self, env, agent, epochs) -> TrainerStd:
         pass
 
     @abstractmethod
-    def create_trainer_dqn(self, env, agent, epochs) -> AbstractProductB:
+    def create_trainer_dqn(self, env, agent, epochs) -> TrainerDQN:
         pass
 
 
@@ -57,8 +41,9 @@ class FactoryGymEnv(AbstractFactory):
 
 class Manager:
     __instance = None
-    _on_start = None
+    _on_init = None
     _on_finish = None
+    _validator = None
 
     def __init__(self, env_size, strategy, num_episodes, num_actions):
         if not Manager.__instance:
@@ -84,6 +69,18 @@ class Manager:
     @property
     def num_episodes(self):
         return self._num_episodes
+    
+    @property
+    def on_init(self):
+        return self._on_init
+    
+    @property
+    def on_finish(self):
+        return self._on_finish
+
+    @property
+    def validator(self):
+        return self._validator
 
     @classmethod
     def get_instance(cls, env_size, strategy, num_episodes, num_actions):
@@ -109,11 +106,14 @@ class Manager:
             trainer = factory.create_trainer_dqn(env, agent, epochs)
         return trainer
 
-    def set_on_start(self, command):
-        self._on_start = command
+    def set_on_init(self, command):
+        self._on_init = command
 
     def set_on_finish(self, command):
         self._on_finish = command
+
+    def set_validator(self, command):
+        self._validator = command
 
 
 class Plotter:
@@ -156,7 +156,7 @@ class Command(ABC):
         pass
 
 
-class SimpleCommand(Command):
+class Descriptor(Command):
     def __init__(self, env_size, strategy, num_episodes, num_actions) -> None:
         self._env_size = env_size
         self._strategy = strategy
@@ -169,7 +169,7 @@ class SimpleCommand(Command):
               f"Epochs: {self._num_episodes}.\nActions: {self._num_actions}.\n")
 
 
-class ComplexCommand(Command):
+class Summarizer(Command):
     def __init__(self, receiver, trainer, result) -> None:
         self._receiver = receiver
         self._trainer = trainer
@@ -182,10 +182,20 @@ class ComplexCommand(Command):
             self._receiver.plot_dqn(self._result)
 
 
+class Validator(Command):
+    def __init__(self, message='', response=''):
+        self.message = message
+        self.response = response
+
+    def execute(self):
+        print('Error found: ', self.message,
+              '\n', self.response)
+
+
 def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
     manager = Manager.get_instance(env_size, strategy, epochs, 4)
-    manager.set_on_start(SimpleCommand(env_size, strategy, epochs, 4))
-    manager._on_start.execute()
+    manager.set_on_init(Descriptor(env_size, strategy, epochs, 4))
+    manager.on_init.execute()
 
     if env == 'Custom':
         factory = FactoryCustomEnv()
@@ -193,7 +203,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             strategy_type = 'std'
             trainer = manager.run(strategy_type, factory, manager.env, manager.agent, epochs)
             Q = trainer.train()
-            manager.set_on_finish(ComplexCommand(
+            manager.set_on_finish(Summarizer(
                 Plotter, trainer, Q))
         else:
             strategy_type = 'dqn'
@@ -202,28 +212,33 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             env = Environment(env_size)
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
-            manager.set_on_finish(ComplexCommand(
+            manager.set_on_finish(Summarizer(
                 Plotter, trainer, scores))
     else:
         factory = FactoryGymEnv()
+        if env_size[0] not in [5, 10]:
+            manager.set_validator(Validator("maze size is not valid",
+                                            "To use Gym environment, size must be equal to 5 or 10"))
+            manager.validator.execute()
+            return
         if 'Sarsa' in strategy:
             strategy_type = 'std'
             env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
             trainer = manager.run(strategy_type, factory, env, manager.agent, epochs)
             Q = trainer.train()
-            manager.set_on_finish(ComplexCommand(
+            manager.set_on_finish(Summarizer(
                 Plotter, trainer, Q))
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
             agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
-            env = Environment(env_size)
+            env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
-            manager.set_on_finish(ComplexCommand(
+            manager.set_on_finish(Summarizer(
                 Plotter, trainer, scores))
 
-    manager._on_finish.execute()
+    manager.on_finish.execute()
 
 
 
