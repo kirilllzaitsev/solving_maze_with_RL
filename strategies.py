@@ -80,6 +80,21 @@ class Dqn_exp_replay(Strategy):
     def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
         pass
 
+class Double_dqn(Strategy):
+
+    def __init__(self, policy=None):
+        super().__init__(policy)
+
+    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
+        pass
+
+class Dqn_prioritized_exp_replay(Strategy):
+
+    def __init__(self, policy=None):
+        super().__init__(policy)
+
+    def update(self, alpha, gamma, Q, state, action, reward, next_state=None, next_action=None, eps=None):
+        pass
 
 class StrategyFactory:
     @staticmethod

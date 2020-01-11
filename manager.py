@@ -196,6 +196,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
     manager = Manager.get_instance(env_size, strategy, epochs, 4)
     manager.set_on_init(Descriptor(env_size, strategy, epochs, 4))
     manager.on_init.execute()
+    agent = None
 
     if env == 'Custom':
         factory = FactoryCustomEnv()
@@ -208,10 +209,17 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
-            if 'Replay' in strategy:
-                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
-            else:
-                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
+            if 'Prioritized_Exp_Replay' in strategy:
+                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+            if 'Double_DQN' in strategy:
+                agent = AdvAgents.DQNAgent_DoubleDQN(state_size=len(env_size), action_size=n_actions,
+                                                                seed=seed)
+            if strategy == 'DQN_Exp_Replay':
+                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions,
+                                                     seed=seed)
+            if strategy == 'Vanilla_DQN':
+                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions,
+                                                     seed=seed)
             # env = Environment(env_size)
             trainer = Manager.run(strategy_type, factory, manager.env, agent, epochs)
             scores = trainer.train()
@@ -235,11 +243,17 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
-            if 'Replay' in strategy:
-                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
-            else:
-                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
-
+            if 'Prioritized_Exp_Replay' in strategy:
+                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+            if 'Double_DQN' in strategy:
+                agent = AdvAgents.DQNAgent_DoubleDQN(state_size=len(env_size), action_size=n_actions,
+                                                                seed=seed)
+            if strategy == 'DQN_Exp_Replay':
+                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions,
+                                                     seed=seed)
+            if strategy == 'Vanilla_DQN':
+                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions,
+                                                     seed=seed)
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
             manager.set_on_finish(Summarizer(

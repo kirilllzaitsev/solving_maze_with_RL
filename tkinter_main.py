@@ -5,8 +5,10 @@ import sys
 STRATEGIES = [
     ("Sarsamax", "Sarsamax"),
     ("ExpectedSarsa", "ExpectedSarsa"),
-    ("DQN", "DQN"),
+    ("Vanilla DQN", "Vanilla_DQN"),
     ("DQN with Exp.Replay", "DQN_Exp_Replay"),
+    ("Double DQN", "Double_DQN"),
+    ("DQN with Prioritized Exp.Replay", "DQN_Prioritized_Exp_Replay"),
 ]
 
 ENVIRONMENTS = [
@@ -62,7 +64,7 @@ class Application(tk.Frame):
         self.env_label = tk.Label(text="Choose environment:")
         self.env_label.grid(row=self.row_indexer, column=1, sticky="w")
 
-        self.row_indexer = 7
+        self.row_indexer = 9
 
         self.epoch_entry = tk.Entry(textvariable=self.epochs, width=10)
         self.epoch_label = tk.Label(text="Enter no. of epochs:")
