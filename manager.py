@@ -208,14 +208,18 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
-            agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
-            env = Environment(env_size)
-            trainer = Manager.run(strategy_type, factory, env, agent, epochs)
+            if 'Replay' in strategy:
+                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+            else:
+                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
+            # env = Environment(env_size)
+            trainer = Manager.run(strategy_type, factory, manager.env, agent, epochs)
             scores = trainer.train()
             manager.set_on_finish(Summarizer(
                 Plotter, trainer, scores))
     else:
         factory = FactoryGymEnv()
+        env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
         if env_size[0] not in [5, 10]:
             manager.set_validator(Validator("maze size is not valid",
                                             "To use Gym environment, size must be equal to 5 or 10"))
@@ -223,7 +227,7 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             return
         if 'Sarsa' in strategy:
             strategy_type = 'std'
-            env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
+            # env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
             trainer = manager.run(strategy_type, factory, env, manager.agent, epochs)
             Q = trainer.train()
             manager.set_on_finish(Summarizer(
@@ -231,8 +235,11 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
-            agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
-            env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
+            if 'Replay' in strategy:
+                agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+            else:
+                agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions, seed=seed)
+
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
             manager.set_on_finish(Summarizer(

@@ -72,6 +72,15 @@ class Dqn(Strategy):
         pass
 
 
+class Dqn_exp_replay(Strategy):
+
+    def __init__(self, policy=None):
+        super().__init__(policy)
+
+    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
+        pass
+
+
 class StrategyFactory:
     @staticmethod
     def init_strategy(typ):

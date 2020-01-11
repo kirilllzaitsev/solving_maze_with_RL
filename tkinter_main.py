@@ -6,7 +6,7 @@ STRATEGIES = [
     ("Sarsamax", "Sarsamax"),
     ("ExpectedSarsa", "ExpectedSarsa"),
     ("DQN", "DQN"),
-    ("DQN with Exp.Replay", "DQN with Exp.Replay"),
+    ("DQN with Exp.Replay", "DQN_Exp_Replay"),
 ]
 
 ENVIRONMENTS = [

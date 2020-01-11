@@ -163,7 +163,7 @@ class CustomTrainerStd(TrainerStd):
 
 
 class TrainerDQN(ABC):
-    def __init__(self, env, agent, n_episodes=10, t_steps=500,
+    def __init__(self, env, agent, n_episodes=10, t_steps=300,
                  eps_start=1, eps_min=0.001, eps_decay=.95):
         self.env = env
         self.agent = agent
