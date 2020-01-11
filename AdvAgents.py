@@ -1,6 +1,7 @@
 from policies import *
 import random
 from collections import namedtuple, deque
+from abc import ABC, abstractmethod
 
 from model import QNetwork
 
@@ -16,6 +17,27 @@ LR = 5e-4               # learning rate
 UPDATE_EVERY = 4        # how often to update the network
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+class Agent(ABC):
+    def __init__(self, state_size, action_size, seed):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, seed)
+        self.t_step = 0
+        self.seed = random.seed(seed)
+
+    @abstractmethod
+    def step(self, *args):
+        pass
+
+    @abstractmethod
+    def act(self, *args):
+        pass
+
+    @abstractmethod
+    def learn(self, *args):
+        pass
 
 
 class ReplayBuffer:
@@ -61,7 +83,7 @@ class ReplayBuffer:
         return len(self.memory)
 
 
-class DQNAgent:
+class DQNAgent(Agent):
     """Interacts with and learns from the environment."""
 
     def __init__(self, state_size, action_size, seed):
@@ -73,33 +95,19 @@ class DQNAgent:
             action_size (int): dimension of each action
             seed (int): random seed
         """
-        self.state_size = state_size
-        self.action_size = action_size
-        self.seed = random.seed(seed)
-
-        # Q-Network
+        super().__init__(state_size, action_size, seed)
         self.qnetwork = QNetwork(state_size, action_size, seed).to(device)
-        # self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
         self.optimizer = optim.Adam(self.qnetwork.parameters(), lr=LR)
-
-        # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, seed)
-        # Initialize time step (for updating every UPDATE_EVERY steps)
-        self.t_step = 0
 
     def step(self, state, action, reward, next_state, done):
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
 
-        # Learn every UPDATE_EVERY time steps.
-        # self.t_step = (self.t_step + 1) % UPDATE_EVERY
-
-            # If enough samples are available in memory, get random subset and learn
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
             self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.005):
+    def act(self, state, eps=0.):
         """Returns actions for given state as per current policy.
 
         Params
@@ -139,7 +147,7 @@ class DQNAgent:
         self.optimizer.step()
 
 
-class DQNAgent_ExpReplay:
+class DQNAgent_ExpReplay(Agent):
     """Interacts with and learns from the environment."""
 
     def __init__(self, state_size, action_size, seed):
@@ -151,19 +159,12 @@ class DQNAgent_ExpReplay:
             action_size (int): dimension of each action
             seed (int): random seed
         """
-        self.state_size = state_size
-        self.action_size = action_size
-        self.seed = random.seed(seed)
+        super().__init__(state_size, action_size, seed)
 
         # Q-Network
         self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
         self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
-
-        # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, seed)
-        # Initialize time step (for updating every UPDATE_EVERY steps)
-        self.t_step = 0
     
     def step(self, state, action, reward, next_state, done):
         # Save experience in replay memory
@@ -177,7 +178,7 @@ class DQNAgent_ExpReplay:
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.):
+    def act(self, state, eps=0.005):
         """Returns actions for given state as per current policy.
         
         Params
