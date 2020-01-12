@@ -75,16 +75,10 @@ class TrainerStd(Trainer):
             state = env.reset()  # start episode
             state = tuple(state)
             print('RESET ENV')
-            eps = max(eps * eps_decay, eps_min) ** 2
+            eps = max(eps * eps_decay, eps_min)
             action = self.agent.strategy.policy.get_action(Q, state, nA, eps)
 
             for t in range(t_steps):
-                if msvcrt.kbhit():
-                    try:
-                        self.env.close()
-                    except:
-                        pass
-                    return Q
                 self.env.render()
                 next_state, reward, done, _ = self.step(state, action)  # take action, observe reward and state
                 next_state = tuple(next_state)
@@ -100,24 +94,19 @@ class TrainerStd(Trainer):
 
                     state = next_state
                     action = next_action
-                    # print(state, action, reward)
                 if done:
                     Q[state][action] = self.agent.strategy.update(alpha, gamma, Q,
-                                                                  state, action, reward)
-
+                                                                  state, action, reward, eps=eps)
                     break
                 tmp_scores.append(score)
 
             if i_episode % plot_every == 0:
                 avg_scores.append(np.mean(tmp_scores))
-        # plot performance
         self._history = avg_scores
-        # print best 100-episode performance
         try:
             print(f'Best Average Reward over {plot_every} Episodes: {np.max(avg_scores)}')
-        except:
-            pass
-
+        except ValueError:
+            print('Not enough episodes to calculate average reward')
         return Q
 
     @abstractmethod
@@ -189,21 +178,18 @@ class TrainerDQN(ABC):
                 score += reward
                 if done:
                     break
-                if msvcrt.kbhit():
-                    try:
-                        self.env.close()
-                    except:
-                        pass
-                    return scores
             scores_window.append(score)
             scores.append(score)
             eps = max(self.eps_min, eps * self.eps_decay)
             print('Episode {}\tAverage Score: {:.2f}\n'.format(i_episode, np.mean(scores_window)), end="")
             if i_episode % 100 == 0:
                 print("Episode:{}, Average:{}".format(i_episode, np.mean(scores_window)))
-            if np.mean(scores_window) >= 200:
+            if np.mean(scores_window) >= 0:
                 print("Environment solved! in {} episodes. Average: {}".format(i_episode, np.mean(scores_window)))
-                torch.save(self.agent.qnetwork_local.state_dict(), 'checkpoint.ckpt')
+                try:
+                    torch.save(self.agent.qnetwork.state_dict(), 'checkpoint.ckpt')
+                except AttributeError:
+                    torch.save(self.agent.qnetwork_local.state_dict(), 'checkpoint.ckpt')
                 break
         return scores
 

@@ -23,7 +23,6 @@ class Strategy:
 
 
 class Sarsamax(Strategy):
-
     def __init__(self, policy='EpsilonGreedy'):
         super().__init__(policy)
 
@@ -48,13 +47,13 @@ class Sarsamax(Strategy):
         return new_value
 
 
-class ExpectedSarsa(Strategy):
-
+class Expected_Sarsa(Strategy):
     def __init__(self, policy='Epsilon'):
         super().__init__(policy)
 
     def update(self, alpha, gamma, Q, state, action, reward, next_state=None, next_action=None, eps=None):
         nA=len(Q[next_state])
+        print(eps)
         current = Q[state][action]
         policy_s = np.ones(nA)*eps/nA
         best_a = np.argmax(Q[next_state])
@@ -64,40 +63,41 @@ class ExpectedSarsa(Strategy):
 
 
 class Dqn(Strategy):
-
     def __init__(self, policy=None):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
+    def update(self, alpha, gamma, Q, state, action, reward):
         pass
 
 
 class Dqn_exp_replay(Strategy):
-
     def __init__(self, policy=None):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
+    def update(self, alpha, gamma, Q, state, action, reward):
         pass
+
 
 class Double_dqn(Strategy):
-
     def __init__(self, policy=None):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state = None, next_action=None, eps=None):
+    def update(self, alpha, gamma, Q, state, action, reward):
         pass
+
 
 class Dqn_prioritized_exp_replay(Strategy):
-
     def __init__(self, policy=None):
         super().__init__(policy)
 
-    def update(self, alpha, gamma, Q, state, action, reward, next_state=None, next_action=None, eps=None):
+    def update(self, alpha, gamma, Q, state, action, reward):
         pass
+
 
 class StrategyFactory:
     @staticmethod
-    def init_strategy(typ):
-        target_class = typ.capitalize()
-        return globals()[target_class]()
+    def init_strategy(target_class):
+        try:
+            return globals()[target_class]()
+        except KeyError:
+            return None

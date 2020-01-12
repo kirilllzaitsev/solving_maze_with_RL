@@ -10,9 +10,7 @@ class Cell:
 
 
 class Environment:
-    
     def __init__(self, size):
-        self.name = 'I am ENVIRONMENT'
         self._size = size
         self._action_space = self.init_action_space(size)
         self._start_pos, self._exit_pos = self.init_positions()

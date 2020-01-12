@@ -69,11 +69,11 @@ class Manager:
     @property
     def num_episodes(self):
         return self._num_episodes
-    
+
     @property
     def on_init(self):
         return self._on_init
-    
+
     @property
     def on_finish(self):
         return self._on_finish
@@ -100,9 +100,10 @@ class Manager:
 
     @staticmethod
     def run(strategy_type, factory, env, agent, epochs):
+        trainer = None
         if strategy_type == 'std':
             trainer = factory.create_trainer_std(env, agent, epochs)
-        else:
+        if strategy_type == 'dqn':
             trainer = factory.create_trainer_dqn(env, agent, epochs)
         return trainer
 
@@ -115,6 +116,11 @@ class Manager:
     def set_validator(self, command):
         self._validator = command
 
+    @classmethod
+    def clear_instance(cls):
+        del cls.__instance
+        cls.__instance = None
+
 
 class Plotter:
     @staticmethod
@@ -126,7 +132,7 @@ class Plotter:
         plt.plot(np.linspace(0, trainer.n_episodes, len(trainer.history), endpoint=False),
                  np.asarray(trainer.history))
         plt.xlabel('Episode Number')
-        plt.ylabel('Average Reward (Over Next %d Episodes)' % 300)
+        plt.ylabel('Average Reward over episodes')
         fig = plt.figure(figsize=(11, 6))
         ax1 = fig.add_subplot(2, 2, 1)
         ax2 = fig.add_subplot(2, 2, 2)
@@ -142,8 +148,7 @@ class Plotter:
 
     @staticmethod
     def plot_dqn(scores):
-        fgr = plt.figure()
-        ax = plt.subplot(111)
+        fig = plt.figure()
         plt.plot(np.arange(len(scores)), scores)
         plt.xlabel('Episodes')
         plt.ylabel('Scores')
@@ -193,8 +198,9 @@ class Validator(Command):
 
 
 def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
-    manager = Manager.get_instance(env_size, strategy, epochs, 4)
-    manager.set_on_init(Descriptor(env_size, strategy, epochs, 4))
+    Manager.clear_instance()
+    manager = Manager.get_instance(env_size, strategy, epochs, n_actions)
+    manager.set_on_init(Descriptor(env_size, strategy, epochs, n_actions))
     manager.on_init.execute()
     agent = None
 
@@ -204,62 +210,56 @@ def main(strategy, epochs, env, env_size=(10, 10), n_actions=4, seed=42):
             strategy_type = 'std'
             trainer = manager.run(strategy_type, factory, manager.env, manager.agent, epochs)
             Q = trainer.train()
-            manager.set_on_finish(Summarizer(
-                Plotter, trainer, Q))
+            manager.set_on_finish(Summarizer(Plotter, trainer, Q))
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
             if 'Prioritized_Exp_Replay' in strategy:
-                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions,
+                                                                seed=seed)
             if 'Double_DQN' in strategy:
                 agent = AdvAgents.DQNAgent_DoubleDQN(state_size=len(env_size), action_size=n_actions,
-                                                                seed=seed)
+                                                     seed=seed)
             if strategy == 'DQN_Exp_Replay':
                 agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions,
                                                      seed=seed)
             if strategy == 'Vanilla_DQN':
                 agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions,
-                                                     seed=seed)
-            # env = Environment(env_size)
+                                           seed=seed)
             trainer = Manager.run(strategy_type, factory, manager.env, agent, epochs)
             scores = trainer.train()
-            manager.set_on_finish(Summarizer(
-                Plotter, trainer, scores))
+            manager.set_on_finish(Summarizer(Plotter, trainer, scores))
     else:
         factory = FactoryGymEnv()
         env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
         if env_size[0] not in [5, 10]:
             manager.set_validator(Validator("maze size is not valid",
-                                            "To use Gym environment, size must be equal to 5 or 10"))
+                                            "To use Gym environment, size must be equal to 5 / 10 / 15"))
             manager.validator.execute()
             return
         if 'Sarsa' in strategy:
             strategy_type = 'std'
-            # env = gym.make(f'maze-random-{env_size[0]}x{env_size[1]}-v0')
             trainer = manager.run(strategy_type, factory, env, manager.agent, epochs)
             Q = trainer.train()
-            manager.set_on_finish(Summarizer(
-                Plotter, trainer, Q))
+            manager.set_on_finish(Summarizer(Plotter, trainer, Q))
         else:
             strategy_type = 'dqn'
             torch.cuda.current_device()
             if 'Prioritized_Exp_Replay' in strategy:
-                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions, seed=seed)
+                agent = AdvAgents.DQNAgent_PrioritizedExpReplay(state_size=len(env_size), action_size=n_actions,
+                                                                seed=seed)
             if 'Double_DQN' in strategy:
                 agent = AdvAgents.DQNAgent_DoubleDQN(state_size=len(env_size), action_size=n_actions,
-                                                                seed=seed)
+                                                     seed=seed)
             if strategy == 'DQN_Exp_Replay':
                 agent = AdvAgents.DQNAgent_ExpReplay(state_size=len(env_size), action_size=n_actions,
                                                      seed=seed)
             if strategy == 'Vanilla_DQN':
                 agent = AdvAgents.DQNAgent(state_size=len(env_size), action_size=n_actions,
-                                                     seed=seed)
+                                           seed=seed)
             trainer = Manager.run(strategy_type, factory, env, agent, epochs)
             scores = trainer.train()
-            manager.set_on_finish(Summarizer(
-                Plotter, trainer, scores))
-
+            manager.set_on_finish(Summarizer(Plotter, trainer, scores))
     manager.on_finish.execute()
-
 
 
