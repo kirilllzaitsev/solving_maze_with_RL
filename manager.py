@@ -164,7 +164,7 @@ class Descriptor(Command):
         self._num_actions = num_actions
 
     def execute(self) -> None:
-        print(f"Manager was initialised with the following parameters: \n"
+        print(f"\nManager was initialised with the following parameters: \n"
               f"Maze size: {self._env_size}.\nStrategy: {self._strategy}.\n"
               f"Epochs: {self._num_episodes}.\nActions: {self._num_actions}.\n")
 
