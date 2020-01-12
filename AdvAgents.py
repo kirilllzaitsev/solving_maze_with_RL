@@ -1,21 +1,17 @@
-from policies import *
-import random
-from collections import namedtuple, deque
 from abc import ABC, abstractmethod
-
 from model import QNetwork
+from buffers import *
 
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-BUFFER_SIZE = int(1e5)  # replay buffer size
+BUFFER_SIZE = int(1e4)  # replay buffer size
 BATCH_SIZE = 32  # minibatch size
 GAMMA = 0.9  # discount factor
 TAU = 1e-3  # for soft update of target parameters
 LR = 5e-4  # learning rate
 UPDATE_EVERY = 4  # how often to update the network
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -40,58 +36,16 @@ class Agent(ABC):
         pass
 
 
-class ReplayBuffer:
-    """Fixed-size buffer to store experience tuples."""
-
-    def __init__(self, action_size, buffer_size, batch_size, seed):
-        """Initialize a ReplayBuffer object.
-
-        Params
-        ======
-            action_size (int): dimension of each action
-            buffer_size (int): maximum size of buffer
-            batch_size (int): size of each training batch
-            seed (int): random seed
-        """
-        self.action_size = action_size
-        self.memory = deque(maxlen=buffer_size)
-        self.batch_size = batch_size
-        self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
-        self.seed = random.seed(seed)
-
-    def add(self, state, action, reward, next_state, done):
-        """Add a new experience to memory."""
-        e = self.experience(state, action, reward, next_state, done)
-        self.memory.append(e)
-
-    def sample(self):
-        """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.memory, k=self.batch_size)
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])) \
-            .float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)) \
-            .float().to(device)
-
-        return states, actions, rewards, next_states, dones
-
-    def __len__(self):
-        """Return the current size of internal memory."""
-        return len(self.memory)
-
-
 class DQNAgent(Agent):
-    """Interacts with and learns from the environment."""
+    """Agent interacts learns via vanilla DQN.
+       Memory is not implemented so the importance of this technique is emphasized.
+    """
 
     def __init__(self, state_size, action_size, seed):
-        """Initialize an Agent object.
+        """Initialize a DQNAgent object.
 
         Params
         ======
-            state_size (int): dimension of each state
-            action_size (int): dimension of each action
             seed (int): random seed
         """
         super().__init__(state_size, action_size, seed)
@@ -99,14 +53,10 @@ class DQNAgent(Agent):
         self.optimizer = optim.Adam(self.qnetwork.parameters(), lr=LR)
 
     def step(self, state, action, reward, next_state, done):
-        # Save experience in replay memory
-        self.memory.add(state, action, reward, next_state, done)
+        experience = state, action, reward, next_state, done
+        self.learn(experience, GAMMA)
 
-        if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
-
-    def act(self, state, eps=0.):
+    def act(self, state, eps=0.05):
         """Returns actions for given state as per current policy.
 
         Params
@@ -127,7 +77,7 @@ class DQNAgent(Agent):
         else:
             return random.choice(np.arange(self.action_size))
 
-    def learn(self, experiences, gamma):
+    def learn(self, experience, gamma):
         """Update value parameters using given batch of experience tuples.
 
         Params
@@ -135,59 +85,49 @@ class DQNAgent(Agent):
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples
             gamma (float): discount factor
         """
-        states, actions, rewards, next_states, dones = experiences
-        Q_targets_next = self.qnetwork(next_states).detach().max(1)[0].unsqueeze(1)
+        state, action, reward, next_state, done = experience
+        state = torch.tensor(state).float().unsqueeze(0).to(device)
+        next_state = torch.tensor(next_state).float().unsqueeze(0).to(device)
+        action = torch.tensor([[action]]).long().to(device)
+        Q_targets_next = self.qnetwork(next_state).detach().max(1)[0].unsqueeze(1)
+
         # Compute Q targets for current states
-        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
-
+        Q_targets = reward + (gamma * Q_targets_next * (1 - done))
         # Get expected Q values from local model
-        Q_expected = self.qnetwork(states).gather(1, actions)
-        loss = F.mse_loss(Q_targets, Q_expected)
+        Q_expected = self.qnetwork(state).gather(1, action)
 
+        loss = F.mse_loss(Q_targets, Q_expected)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
 
 class DQNAgent_ExpReplay(Agent):
-    """Interacts with and learns from the environment."""
+    """Agent learns via using a memory buffer"""
 
     def __init__(self, state_size, action_size, seed):
         super().__init__(state_size, action_size, seed)
 
         # Q-Network
-        self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
-        self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
-        self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
+        self.qnetwork = QNetwork(state_size, action_size, seed).to(device)
+        self.optimizer = optim.Adam(self.qnetwork.parameters(), lr=LR)
 
     def step(self, state, action, reward, next_state, done):
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
 
-        # Learn every UPDATE_EVERY time steps.
-        self.t_step = (self.t_step + 1) % UPDATE_EVERY
-        if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > BATCH_SIZE:
-                experiences = self.memory.sample()
-                self.learn(experiences, GAMMA)
+        if len(self.memory) > BATCH_SIZE:
+            experiences = self.memory.sample()
+            self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.005):
-        """Returns actions for given state as per current policy.
-
-        Params
-        ======
-            state (array_like): current state
-            eps (float): epsilon, for epsilon-greedy action selection
-        """
+    def act(self, state, eps=0.05):
         state = np.array(state)
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
-        self.qnetwork_local.eval()
+        self.qnetwork.eval()
         with torch.no_grad():
-            action_values = self.qnetwork_local(state)
-        self.qnetwork_local.train()
+            action_values = self.qnetwork(state)
+        self.qnetwork.train()
 
-        # Epsilon-greedy action selection
         if random.random() > eps:
             return np.argmax(action_values.cpu().data.numpy())
         else:
@@ -196,53 +136,38 @@ class DQNAgent_ExpReplay(Agent):
     def learn(self, experiences, gamma):
         states, actions, rewards, next_states, dones = experiences
 
-        # Get max predicted Q values (for next states) from target model
-        Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
-        # Compute Q targets for current states
+        Q_targets_next = self.qnetwork(next_states).detach().max(1)[0].unsqueeze(1)
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
+        Q_expected = self.qnetwork(states).gather(1, actions)
 
-        # Get expected Q values from local model
-        Q_expected = self.qnetwork_local(states).gather(1, actions)
-
-        # Compute loss
         loss = F.mse_loss(Q_expected, Q_targets)
-        # Minimize the loss
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        # ------------------- update target network ------------------- #
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)
-
-    def soft_update(self, local_model, target_model, tau):
-        for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
-            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
-
 
 class DQNAgent_DoubleDQN(Agent):
-    """Interacts with and learns from the environment."""
-
+    """Agent uses memory + two networks to prohibit
+       'donkey driving' in case of one DQN
+    """
     def __init__(self, state_size, action_size, seed):
         super().__init__(state_size, action_size, seed)
 
-        # Q-Network
         self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
         self.qnetwork_target = QNetwork(state_size, action_size, seed).to(device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
 
     def step(self, state, action, reward, next_state, done):
-        # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
 
         # Learn every UPDATE_EVERY time steps.
         self.t_step = (self.t_step + 1) % UPDATE_EVERY
         if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > BATCH_SIZE:
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.005):
+    def act(self, state, eps=0.05):
         state = np.array(state)
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         self.qnetwork_local.eval()
@@ -250,7 +175,6 @@ class DQNAgent_DoubleDQN(Agent):
             action_values = self.qnetwork_local(state)
         self.qnetwork_local.train()
 
-        # Epsilon-greedy action selection
         if random.random() > eps:
             return np.argmax(action_values.cpu().data.numpy())
         else:
@@ -274,7 +198,6 @@ class DQNAgent_DoubleDQN(Agent):
         loss.backward()
         self.optimizer.step()
 
-        # ------------------- update target network ------------------- #
         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)
 
     def soft_update(self, local_model, target_model, tau):
@@ -282,80 +205,33 @@ class DQNAgent_DoubleDQN(Agent):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
 
 
-class PrioritizedReplayBuffer:
-    """Fixed-size buffer to store experience tuples."""
-
-    def __init__(self, action_size, buffer_size, batch_size, seed):
-        self.action_size = action_size
-        self.memory = deque(maxlen=buffer_size)
-        self.batch_size = batch_size
-        self.experience = namedtuple("Experience",
-                                     field_names=["state", "action", "reward", "next_state", "done", "priority"])
-        self.seed = random.seed(seed)
-        self.priority_norm = 0
-
-    def add(self, state, action, reward, next_state, done, p):
-        e = self.experience(state, action, reward, next_state, done, p)
-        self.memory.append(e)
-
-    def count_probs(self):
-        probs = list()
-        self.priority_norm = 0
-        for *_, p in self.memory:
-            self.priority_norm += p
-        for *_, p in self.memory:
-            probs.append(p / self.priority_norm)
-        probs = np.array(probs, dtype='float64')
-        probs /= sum(probs)
-        return probs
-
-    def sample(self):
-        """Randomly sample a batch of experiences from memory."""
-        indices = np.random.choice(np.arange(len(self.memory)),
-                                   size=self.batch_size, p=self.count_probs())
-        experiences = [self.memory[x] for x in indices]
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])) \
-            .float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)) \
-            .float().to(device)
-        priorities = torch.from_numpy(np.vstack([e.priority for e in experiences if e is not None]))\
-            .float().to(device)
-
-        return states, actions, rewards, next_states, dones, priorities
-
-    def __len__(self):
-        """Return the current size of internal memory."""
-        return len(self.memory)
-
-
 class DQNAgent_PrioritizedExpReplay(Agent):
-    """Interacts with and learns from the environment."""
+    """Agent learns through setting priorities to memories
+       and samples experiences according to them
+    """
 
     def __init__(self, state_size, action_size, seed):
         super().__init__(state_size, action_size, seed)
         self.memory = PrioritizedReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, seed)
-        # Q-Network
         self.qnetwork = QNetwork(state_size, action_size, seed).to(device)
         self.optimizer = optim.Adam(self.qnetwork.parameters(), lr=LR)
 
     def step(self, state, action, reward, next_state, done):
-        # Save experience in replay memory
+        # Create tmp-variables to run a network
         tmp_state = torch.tensor(state).float().unsqueeze(0).to(device)
         tmp_next_state = torch.tensor(next_state).float().unsqueeze(0).to(device)
         tmp_action = torch.tensor([[action]]).long().to(device)
 
-        priority = abs(reward + (GAMMA * self.qnetwork(tmp_next_state).detach().max(1)[0].unsqueeze(1) -
-                                 self.qnetwork(tmp_state).gather(1, tmp_action)) * (1 - done)).item()
-        self.memory.add(state, action, reward, next_state, done, priority)
+        sigma = reward + (GAMMA * self.qnetwork(tmp_next_state).detach().max(1)[0].unsqueeze(1) -
+                          self.qnetwork(tmp_state).gather(1, tmp_action)).item() * (1 - done)
+
+        self.memory.add(state, action, reward, next_state, done, sigma)
 
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
             self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.005):
+    def act(self, state, exploration_rate=0.05):
         state = np.array(state)
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         self.qnetwork.eval()
@@ -363,30 +239,19 @@ class DQNAgent_PrioritizedExpReplay(Agent):
             action_values = self.qnetwork(state)
         self.qnetwork.train()
 
-        # Epsilon-greedy action selection
-        if random.random() > eps:
+        if random.random() > exploration_rate:
             return np.argmax(action_values.cpu().data.numpy())
         else:
             return random.choice(np.arange(self.action_size))
 
-    def learn(self, experiences, gamma):
-        states, actions, rewards, next_states, dones, priorities = experiences
+    def learn(self, experiences, gamma, eps=1e-6):
+        states, actions, rewards, next_states, dones, sigmas = experiences
 
-        # Get max predicted Q values (for next states) from target model
         Q_targets_next = self.qnetwork(next_states).detach().max(1)[0].unsqueeze(1)
-        # Compute Q targets for current states
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
-
-        # Get expected Q values from local model
         Q_expected = self.qnetwork(states).gather(1, actions)
 
-        # Compute loss
         loss = F.mse_loss(Q_expected, Q_targets)
-        # Minimize the loss
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        for i, target_param in enumerate(self.qnetwork.parameters()):
-            target_param.data.copy_((1/len(self.memory)/(priorities[i]/self.memory.priority_norm)) * target_param.data)
-
-
